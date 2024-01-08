@@ -32,6 +32,8 @@ async function run() {
 
     const userCollection = client.db("portfolioDB").collection("users");
 
+    const reviewCollection = client.db("portfolioDB").collection("reviews");
+
 
 
     // jwt related api
@@ -127,6 +129,8 @@ async function run() {
       res.send({ admin });
     });
 
+    // item api
+
     app.get("/items", async (req, res) => {
       const result = await itemCollection.find().toArray();
       res.send(result);
@@ -172,11 +176,65 @@ async function run() {
       res.send(result);
     });
 
+    // review api
+
+    app.get("/reviews", async (req, res) => {
+      const result = await reviewCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get("/reviews/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await reviewCollection.findOne(query);
+      res.send(result);
+    });
+
+    app.post("/reviews", verifyToken, async (req, res) => {
+      const review = req.body;
+      const result = await reviewCollection.insertOne(review);
+      res.send(result);
+    });
+
+    app.patch("/reviews/:id", verifyToken, verifyAdmin, async (req, res) => {
+      const review = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          image: review.image,
+          rating: review.rating,
+          rating: review.rating,
+        },
+      };
+      const result = await reviewCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    app.delete("/reviews/:id", verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await reviewCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    // admin stats 
+    app.get("/admin-stats", verifyToken, verifyAdmin, async (req, res) => {
+      const users = await userCollection.estimatedDocumentCount();
+      const items = await itemCollection.estimatedDocumentCount();
+      const reviews = await reviewCollection.estimatedDocumentCount();
+      res.send({
+        users,
+        items,
+        reviews,
+      });
+    });
+
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
